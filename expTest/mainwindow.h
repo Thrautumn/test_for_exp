@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <termios.h> 
+#include <linux/input.h> // [新增] 用于蜂鸣器 input_event 结构体
 
 namespace Ui {
 class MainWindow;
@@ -19,10 +20,12 @@ public:
 
 private slots:
     void readNfcTask();
-    void triggerLed(bool on);       // LED 控制逻辑
-    void turnOffAllLeds();          // 自动关灯的槽函数
+    void triggerLed(bool on);       
+    void turnOffAllLeds();          
     
-    void triggerBeep(int ms);      
+    void triggerBeep(int ms);      // [修改] 稍后在cpp中实现
+    void turnOffBeep();            // [新增] 专门用于关闭蜂鸣器的槽函数
+    
     void updateSegmentLed(long id); 
     void saveToDatabase(long id);   
 
@@ -36,8 +39,11 @@ private:
     int com_init(const char* device, speed_t speed);
 
     // --- LED 变量 ---
-    int fd_led;                     // LED 设备文件描述符
-    QTimer *ledOffTimer;            // 用于让灯亮 2 秒后自动熄灭
+    int fd_led;                     
+    QTimer *ledOffTimer;            
+
+    // --- Beep 变量 ---
+    int fd_beep;                    // [新增] 蜂鸣器文件描述符
 };
 
 #endif

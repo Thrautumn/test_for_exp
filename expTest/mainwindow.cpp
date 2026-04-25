@@ -5,8 +5,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <linux/input.h> // [新增]
 
-// NFC 指令
+// NFC 指令保持不变...
 unsigned char wakeup_cmd[] = {0x55,0x55,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xff,0x03,0xfd,0xd4,0x14,0x01,0x17,0x00};
 unsigned char getUID_cmd[] = {0x00, 0x00, 0xFF, 0x04, 0xFC, 0xD4, 0x4A, 0x01, 0x00, 0xE1, 0x00};
 
@@ -25,16 +26,17 @@ MainWindow::MainWindow(QWidget *parent) :
         nfcTimer->start(50);
     }
 
-    // --- 2. 初始化 LED 驱动 (参考 ledtest.c) ---
+    // --- 2. 初始化 LED 驱动 ---
     fd_led = ::open("/dev/ledtest", O_RDWR);
-    if(fd_led < 0) {
-        printf("LED device open failed!\n");
-    }
-
-    // 初始化关灯定时器：一次性定时器，2秒后执行关灯
     ledOffTimer = new QTimer(this);
     ledOffTimer->setSingleShot(true);
     connect(ledOffTimer, SIGNAL(timeout()), this, SLOT(turnOffAllLeds()));
+
+    // --- 3. 初始化 Beep 驱动 [新增] ---
+    fd_beep = ::open("/dev/input/event1", O_RDWR);
+    if(fd_beep < 0) {
+        perror("beep device open failed");
+    }
 
     ui->lbl_Status->setText("系统就绪，请刷卡...");
 }
@@ -88,12 +90,12 @@ void MainWindow::readNfcTask() {
             ui->lbl_CardID->setText(QString("UID: 0x%1").arg(uid, 8, 16, QChar('0')));
             ui->lbl_Status->setText("签到成功！");
 
-            // --- 触发 LED 全亮 ---
             triggerLed(true);
-            ledOffTimer->start(2000); // 2秒后自动熄灭
+            ledOffTimer->start(2000); 
 
-            // 其他模块预留
-            triggerBeep(200);
+            // --- 触发蜂鸣器 [修改] ---
+            triggerBeep(200); // 响 200 毫秒
+
             updateSegmentLed(uid);
             saveToDatabase(uid);
 
@@ -102,7 +104,7 @@ void MainWindow::readNfcTask() {
     }
 }
 
-// 串口初始化函数保持不变...
+// 其余函数 (com_init等) 保持不变...
 int MainWindow::com_init(const char* device, speed_t speed) {
     struct termios options;
     int fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY);
@@ -120,7 +122,5 @@ int MainWindow::com_init(const char* device, speed_t speed) {
     return fd;
 }
 
-// 其它预留函数...
-void MainWindow::triggerBeep(int ms) {}
 void MainWindow::updateSegmentLed(long id) {}
 void MainWindow::saveToDatabase(long id) {}
