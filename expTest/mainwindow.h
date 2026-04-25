@@ -3,7 +3,7 @@
 
 #include <QMainWindow>
 #include <QTimer>
-#include <termios.h> // 必须包含，用于串口配置
+#include <termios.h> 
 
 namespace Ui {
 class MainWindow;
@@ -18,25 +18,26 @@ public:
     ~MainWindow();
 
 private slots:
-    // --- 核心任务：定时读取NFC数据 ---
     void readNfcTask();
-
-    // --- 预留给你的功能壳子 ---
-    void triggerLed(bool on);       // 控制LED的壳子
-    void triggerBeep(int ms);      // 控制蜂鸣器的壳子
-    void updateSegmentLed(long id); // 控制数码管的壳子
-    void saveToDatabase(long id);   // 保存到数据库的壳子
+    void triggerLed(bool on);       // LED 控制逻辑
+    void turnOffAllLeds();          // 自动关灯的槽函数
+    
+    void triggerBeep(int ms);      
+    void updateSegmentLed(long id); 
+    void saveToDatabase(long id);   
 
 private:
     Ui::MainWindow *ui;
 
-    // --- NFC 相关变量 ---
-    int fd_nfc;                    // 串口文件描述符
-    QTimer *nfcTimer;              // 定时器，替代while(1)
-    unsigned char uartdata[25];    // 接收缓冲区
-    
-    // 初始化串口函数
+    // --- NFC 变量 ---
+    int fd_nfc;
+    QTimer *nfcTimer;
+    unsigned char uartdata[25];
     int com_init(const char* device, speed_t speed);
+
+    // --- LED 变量 ---
+    int fd_led;                     // LED 设备文件描述符
+    QTimer *ledOffTimer;            // 用于让灯亮 2 秒后自动熄灭
 };
 
-#endif // MAINWINDOW_H
+#endif
