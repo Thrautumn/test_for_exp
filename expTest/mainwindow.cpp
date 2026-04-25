@@ -6,10 +6,14 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <linux/input.h> // [新增]
+#include <sys/mman.h>
 
 // NFC 指令保持不变...
 unsigned char wakeup_cmd[] = {0x55,0x55,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xff,0x03,0xfd,0xd4,0x14,0x01,0x17,0x00};
 unsigned char getUID_cmd[] = {0x00, 0x00, 0xFF, 0x04, 0xFC, 0xD4, 0x4A, 0x01, 0x00, 0xE1, 0x00};
+
+static unsigned char tube_code[] = {0xc0,0xf9,0xa4,0xb0,0x99,0x92,0x82,0xf8,0x80,0x90,0x7f,0xff};
+static unsigned char addr_code[] = {0x11,0x22,0x44,0x88};
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -38,6 +42,19 @@ MainWindow::MainWindow(QWidget *parent) :
         perror("beep device open failed");
     }
 
+    displayNum = 0;
+    currentDigit = 0;
+    fd_mem = ::open("/dev/mem", O_RDWR);
+    if(fd_mem > 0) {
+        // 映射物理地址 0x8000000
+        cpld_ptr = (unsigned char*)mmap(NULL, (size_t)0x10, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd_mem, (off_t)(0x8000000));
+        
+        // 启动高频扫描定时器 (5ms 刷新一次)
+        segTimer = new QTimer(this);
+        connect(segTimer, SIGNAL(timeout()), this, SLOT(refreshSegmentDisplay()));
+        segTimer->start(5); 
+    }
+
     ui->lbl_Status->setText("系统就绪，请刷卡...");
 }
 
@@ -46,6 +63,10 @@ MainWindow::~MainWindow()
     if(fd_nfc > 0) ::close(fd_nfc);
     if(fd_led > 0) ::close(fd_led);
     if(fd_beep > 0) ::close(fd_beep); // [新增]
+
+    if(cpld_ptr != MAP_FAILED) munmap(cpld_ptr, 0x10);
+    if(fd_mem > 0) ::close(fd_mem);
+
     delete ui;
 }
 
@@ -138,5 +159,30 @@ int MainWindow::com_init(const char* device, speed_t speed) {
     return fd;
 }
 
-void MainWindow::updateSegmentLed(long id) {}
+void MainWindow::updateSegmentLed(long id) {
+    // 将卡号的后四位取出来显示
+    displayNum = id % 10000;
+}
+
+// <--- 新增：实现 refreshSegmentDisplay 扫描逻辑 (对应 demo.c 的 switch 部分) --->
+void MainWindow::refreshSegmentDisplay() {
+    if(cpld_ptr == MAP_FAILED) return;
+
+    int val = 0;
+    switch(currentDigit) {
+        case 0: val = displayNum % 10; break;           // 个位
+        case 1: val = (displayNum % 100) / 10; break;   // 十位
+        case 2: val = (displayNum % 1000) / 100; break; // 百位
+        case 3: val = displayNum / 1000; break;         // 千位
+    }
+
+    // 控制 CPLD 寄存器 (参考 demo.c 逻辑)
+    *(cpld_ptr + (0xe6 << 1)) = addr_code[currentDigit]; // 设置位置
+    *(cpld_ptr + (0xe4 << 1)) = tube_code[val];         // 设置段码
+
+    // 准备下一位扫描
+    currentDigit = (currentDigit + 1) % 4;
+}
+// <--- 新增结束 --->
+
 void MainWindow::saveToDatabase(long id) {}
