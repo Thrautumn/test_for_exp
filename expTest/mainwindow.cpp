@@ -44,50 +44,34 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     if(fd_nfc > 0) ::close(fd_nfc);
-    if(fd_led > 0) ::close(fd_led);
-    if(fd_beep > 0) ::close(fd_beep); // [新增]
+    if(fd_led > 0) {
+        turnOffAllLeds(); // 退出前关灯
+        ::close(fd_led);
+    }
     delete ui;
 }
 
-// ================= [新增/修改] 实现 Beep 控制逻辑 =================
+// ================= 实现 LED 控制逻辑 =================
 
-void MainWindow::triggerBeep(int ms) {
-    if(fd_beep < 0) return;
-
-    struct input_event event;
-    event.type = EV_SND;
-    event.code = SND_BELL;
-    event.value = 1; // 鸣叫
-    ::write(fd_beep, &event, sizeof(struct input_event));
-
-    // 使用 Qt 的单次定时器，在 ms 毫秒后调用关闭函数，不阻塞界面
-    QTimer::singleShot(ms, this, SLOT(turnOffBeep()));
-}
-
-void MainWindow::turnOffBeep() {
-    if(fd_beep < 0) return;
-
-    struct input_event event;
-    event.type = EV_SND;
-    event.code = SND_BELL;
-    event.value = 0; // 停止
-    ::write(fd_beep, &event, sizeof(struct input_event));
-}
-
-// ================= LED 逻辑保持不变 =================
 void MainWindow::triggerLed(bool on) {
     if(fd_led < 0) return;
-    int status = on ? 1 : 0;
+
+    int status = on ? 1 : 0; // 1代表亮，0代表灭
+    
+    // 循环控制 0, 1, 2, 3 号共四个灯
     for(int i = 0; i < 4; i++) {
+        // 参考 ledtest.c: ioctl(fd, 状态, 序号)
         ::ioctl(fd_led, status, i);
     }
 }
 
+// 供定时器调用的简单关灯接口
 void MainWindow::turnOffAllLeds() {
     triggerLed(false);
+    ui->lbl_Status->setText("等待刷卡...");
 }
 
-// ================= NFC 任务逻辑 [修改] =================
+// ================= NFC 任务逻辑 =================
 
 void MainWindow::readNfcTask() {
     unsigned char c;
