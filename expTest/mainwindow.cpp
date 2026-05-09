@@ -205,5 +205,4 @@ void AttendanceSystem::on_btn_Clear_clicked() {
 void AttendanceSystem::on_btn_Exit_clicked() {
     this->close();
 }
-// <--- 新增结束 --->
 
