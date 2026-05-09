@@ -2,12 +2,13 @@
 <ui version="4.0">
  <class>AttendanceSystem</class>
  <widget class="QWidget" name="AttendanceSystem">
+  <!-- 仅修改此处分辨率：800x480 -->
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1316</width>
-    <height>791</height>
+    <width>800</width>
+    <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +21,7 @@
       <widget class="QLabel" name="lbl_Title">
        <property name="font">
         <font>
-         <pointsize>20</pointsize>
+         <pointsize>18</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -60,7 +61,7 @@
        <widget class="QLabel" name="lbl_Status">
         <property name="font">
          <font>
-          <pointsize>16</pointsize>
+          <pointsize>14</pointsize>
          </font>
         </property>
         <property name="text">
@@ -109,8 +110,8 @@
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>0</width>
-         <height>0</height>
+         <width>40</width>
+         <height>20</height>
         </size>
        </property>
       </spacer>
