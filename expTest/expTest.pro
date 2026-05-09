@@ -1,8 +1,7 @@
 QT       += core gui
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-# 如果你之后要用数据库，请取消下面这行的注释
-# QT += sql
+QT += sql
 
 TARGET = expTest
 TEMPLATE = app
