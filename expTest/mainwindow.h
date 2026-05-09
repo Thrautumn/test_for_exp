@@ -6,6 +6,7 @@
 #include <termios.h> 
 #include <linux/input.h> 
 #include <sys/mman.h>
+#include "sqlite3.h" 
 
 namespace Ui {
 class AttendanceSystem; // <--- 修改：名字必须与 .ui 里的 class 一致
@@ -28,6 +29,10 @@ private slots:
     void refreshSegmentDisplay();  
     void updateSegmentLed(long id); 
     void saveToDatabase(long id);   
+    void initDatabase();           // 新增：初始化数据库表
+    void loadHistory();            // 新增：从数据库读取历史记录显示到表格
+    void on_btn_Clear_clicked();   // 新增：清空数据库和表格按钮
+    void on_btn_Exit_clicked();    // 新增：退出系统按钮
 
 private:
     Ui::AttendanceSystem *ui; // <--- 修改：Ui 类型名
@@ -44,7 +49,8 @@ private:
     unsigned char *cpld_ptr;        
     int displayNum;                 
     int currentDigit;               
-    QTimer *segTimer;               
+    QTimer *segTimer;       
+    sqlite3 *db;        
 };
 
 #endif

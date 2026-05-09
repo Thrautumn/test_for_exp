@@ -50,6 +50,13 @@ AttendanceSystem::AttendanceSystem(QWidget *parent) :
         segTimer->start(5); 
     }
 
+
+    initDatabase();
+    loadHistory();
+    // 连接界面按钮
+    connect(ui->btn_Clear, SIGNAL(clicked()), this, SLOT(on_btn_Clear_clicked()));
+    connect(ui->btn_Exit, SIGNAL(clicked()), this, SLOT(on_btn_Exit_clicked()));
+
     ui->lbl_Status->setText("系统就绪，请刷卡...");
 }
 
@@ -61,6 +68,7 @@ AttendanceSystem::~AttendanceSystem()
     if(fd_beep > 0) ::close(fd_beep); 
     if(cpld_ptr != MAP_FAILED) munmap(cpld_ptr, 0x10);
     if(fd_mem > 0) ::close(fd_mem);
+    if(db) sqlite3_close(db);
     delete ui;
 }
 
@@ -147,4 +155,54 @@ void AttendanceSystem::refreshSegmentDisplay() {
     currentDigit = (currentDigit + 1) % 4;
 }
 
-void AttendanceSystem::saveToDatabase(long id) {}
+// <--- 新增：数据库核心函数实现 --->
+
+void AttendanceSystem::initDatabase() {
+    // 打开/创建数据库文件 attendance.db
+    int rc = sqlite3_open("attendance.db", &db);
+    if(rc != SQLITE_OK) {
+        ui->lbl_Status->setText("数据库打开失败！");
+        return;
+    }
+    // 创建考勤记录表 (字段：ID, 状态, 签到时间)
+    const char *sql = "CREATE TABLE IF NOT EXISTS attendance("
+                      "id TEXT, status TEXT, time TEXT);";
+    sqlite3_exec(db, sql, NULL, 0, NULL);
+}
+
+void AttendanceSystem::saveToDatabase(long id) {
+    if(!db) return;
+
+    QString cardID = QString("0x%1").arg(id, 8, 16, QChar('0'));
+    QString curTime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+    QString status = "签到成功";
+
+    // 拼装 SQL 插入语句
+    QString query = QString("INSERT INTO attendance VALUES('%1', '%2', '%3');")
+                    .arg(cardID).arg(status).arg(curTime);
+
+    sqlite3_exec(db, query.toUtf8().data(), NULL, 0, NULL);
+
+    // 实时同步到 UI 表格最上方
+    ui->table_Records->insertRow(0);
+    ui->table_Records->setItem(0, 0, new QTableWidgetItem(cardID));
+    ui->table_Records->setItem(0, 1, new QTableWidgetItem(status));
+    ui->table_Records->setItem(0, 2, new QTableWidgetItem(curTime));
+}
+
+void AttendanceSystem::loadHistory() {
+    // 此函数用于程序启动时，把以前的记录显示出来（可选实现）
+    // 为了简单，新手可以先留空，只实现实时显示
+}
+
+void AttendanceSystem::on_btn_Clear_clicked() {
+    if(!db) return;
+    sqlite3_exec(db, "DELETE FROM attendance;", NULL, 0, NULL);
+    ui->table_Records->setRowCount(0); // 清空表格显示
+    ui->lbl_Status->setText("数据库已清空");
+}
+
+void AttendanceSystem::on_btn_Exit_clicked() {
+    this->close();
+}
+
