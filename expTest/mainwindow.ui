@@ -84,6 +84,12 @@
    </item>
    <item>
     <widget class="QTableWidget" name="table_Records">
+    <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>180</number> <!-- 设置前两列的默认宽度为 180 像素 -->
+     </attribute>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>true</bool> <!-- 强制拉伸最后一列（时间），使其占满剩余所有空间，保证显示完整 -->
+     </attribute>
      <column>
       <property name="text">
        <string>学号/ID</string>
