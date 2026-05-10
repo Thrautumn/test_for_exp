@@ -7,6 +7,7 @@
 #include <linux/input.h> 
 #include <sys/mman.h>
 #include "sqlite3.h" 
+#include <QMap> 
 
 namespace Ui {
 class AttendanceSystem; // <--- 修改：名字必须与 .ui 里的 class 一致
@@ -28,7 +29,7 @@ private slots:
     void turnOffBeep();            
     void refreshSegmentDisplay();  
     void updateSegmentLed(long id); 
-    void saveToDatabase(long id);   
+    void saveToDatabase(long id, QString status);      
     void initDatabase();           // 新增：初始化数据库表
     void loadHistory();            // 新增：从数据库读取历史记录显示到表格
     void on_btn_Clear_clicked();   // 新增：清空数据库和表格按钮
@@ -50,7 +51,9 @@ private:
     int displayNum;                 
     int currentDigit;               
     QTimer *segTimer;       
-    sqlite3 *db;        
+    sqlite3 *db;      
+    QMap<unsigned long, QDateTime> lastScanTimeMap; // 记录每个UID上次刷卡时间
+    QMap<unsigned long, bool> userStatusMap;        // 记录每个UID的状态(true:已签到, false:已签出)  
 };
 
 #endif
