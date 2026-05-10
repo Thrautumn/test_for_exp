@@ -8,6 +8,7 @@
 #include <linux/input.h> 
 #include <sys/mman.h>
 #include <QDateTime> 
+#include <QMessageBox>
 
 unsigned char wakeup_cmd[] = {0x55,0x55,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xff,0x03,0xfd,0xd4,0x14,0x01,0x17,0x00};
 unsigned char getUID_cmd[] = {0x00, 0x00, 0xFF, 0x04, 0xFC, 0xD4, 0x4A, 0x01, 0x00, 0xE1, 0x00};
@@ -111,13 +112,39 @@ void AttendanceSystem::readNfcTask() {
                 && uartdata[5]==0x00 && uartdata[6]==0x00 && uartdata[7] == 0x00 && uartdata[8] == 0xFF && uartdata[12] == 0x4b && uartdata[18] == 0x04 && uartdata[24] == 0x00) 
         {
             unsigned long uid = uartdata[19]<<24 | uartdata[20]<<16 | uartdata[21]<<8 | uartdata[22];
+            QDateTime now = QDateTime::currentDateTime();
+
+            // 1. 检查是否过于频繁 (3秒防抖)
+            if (lastScanTimeMap.contains(uid)) {
+                if (lastScanTimeMap[uid].secsTo(now) < 3) {
+                    ui->lbl_Status->setText("过于频繁，请稍后再试");
+                    ::write(fd_nfc, getUID_cmd, sizeof(getUID_cmd));
+                    return; // 直接跳出，不触发硬件和数据库
+                }
+            }
+            lastScanTimeMap[uid] = now; // 更新最后一次刷卡时间
+
+            // 2. 切换签到/签出状态
+            QString statusText;
+            if (!userStatusMap.contains(uid) || userStatusMap[uid] == false) {
+                statusText = "签到成功";
+                userStatusMap[uid] = true;
+            } else {
+                statusText = "签出成功";
+                userStatusMap[uid] = false;
+            }
+
+            // 3. 执行反馈
             ui->lbl_CardID->setText(QString("UID: 0x%1").arg(uid, 8, 16, QChar('0')));
-            ui->lbl_Status->setText("签到成功！");
+            ui->lbl_Status->setText(statusText);
+            
             triggerLed(true);
             ledOffTimer->start(2000); 
             triggerBeep(200);
             updateSegmentLed(uid);
-            saveToDatabase(uid);
+            
+            // 4. 保存到数据库
+            saveToDatabase(uid, statusText); 
             ::write(fd_nfc, getUID_cmd, sizeof(getUID_cmd));
         }
     }
@@ -171,20 +198,17 @@ void AttendanceSystem::initDatabase() {
     sqlite3_exec(db, sql, NULL, 0, NULL);
 }
 
-void AttendanceSystem::saveToDatabase(long id) {
+void AttendanceSystem::saveToDatabase(long id, QString status) {
     if(!db) return;
 
     QString cardID = QString("0x%1").arg(id, 8, 16, QChar('0'));
     QString curTime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-    QString status = "签到成功";
 
-    // 拼装 SQL 插入语句
     QString query = QString("INSERT INTO attendance VALUES('%1', '%2', '%3');")
                     .arg(cardID).arg(status).arg(curTime);
 
     sqlite3_exec(db, query.toUtf8().data(), NULL, 0, NULL);
 
-    // 实时同步到 UI 表格最上方
     ui->table_Records->insertRow(0);
     ui->table_Records->setItem(0, 0, new QTableWidgetItem(cardID));
     ui->table_Records->setItem(0, 1, new QTableWidgetItem(status));
@@ -198,12 +222,40 @@ void AttendanceSystem::loadHistory() {
 
 void AttendanceSystem::on_btn_Clear_clicked() {
     if(!db) return;
-    sqlite3_exec(db, "DELETE FROM attendance;", NULL, 0, NULL);
-    ui->table_Records->setRowCount(0); // 清空表格显示
-    ui->lbl_Status->setText("数据库已清空");
+
+    // 弹出二次确认对话框
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "确认清除",
+                                  "确定要清除所有签到记录吗？\n此操作不可恢复！",
+                                  QMessageBox::Yes | QMessageBox::No,
+                                  QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        // 执行原本的删除逻辑
+        int rc = sqlite3_exec(db, "DELETE FROM attendance;", NULL, 0, NULL);
+        
+        if (rc == SQLITE_OK) {
+            ui->table_Records->setRowCount(0); // 清空表格显示
+            ui->lbl_Status->setText("数据库已清空");
+            QMessageBox::information(this, "提示", "所有记录已成功清除！");
+        } else {
+            QMessageBox::warning(this, "错误", "数据库操作失败！");
+        }
+    }
 }
 
 void AttendanceSystem::on_btn_Exit_clicked() {
-    this->close();
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "确认退出",
+                                  "确定要退出考勤系统吗？",
+                                  QMessageBox::Yes | QMessageBox::No,
+                                  QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        // 调用 close 会触发析构函数，从而安全关闭硬件和数据库
+        this->close();
+    }
 }
+
+
 
