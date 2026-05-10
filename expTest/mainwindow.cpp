@@ -55,9 +55,6 @@ AttendanceSystem::AttendanceSystem(QWidget *parent) :
 
     initDatabase();
     loadHistory();
-    // 连接界面按钮
-    connect(ui->btn_Clear, SIGNAL(clicked()), this, SLOT(on_btn_Clear_clicked()));
-    connect(ui->btn_Exit, SIGNAL(clicked()), this, SLOT(on_btn_Exit_clicked()));
 
     ui->lbl_Status->setText("系统就绪，请刷卡...");
 }
@@ -116,8 +113,9 @@ void AttendanceSystem::readNfcTask() {
 
             // 1. 检查是否过于频繁 (3秒防抖)
             if (lastScanTimeMap.contains(uid)) {
-                if (lastScanTimeMap[uid].secsTo(now) < 3) {
+                if (lastScanTimeMap[uid].secsTo(now) < 5) {
                     ui->lbl_Status->setText("过于频繁，请稍后再试");
+                    memset(uartdata, 0, sizeof(uartdata)); 
                     ::write(fd_nfc, getUID_cmd, sizeof(getUID_cmd));
                     return; // 直接跳出，不触发硬件和数据库
                 }
@@ -145,6 +143,7 @@ void AttendanceSystem::readNfcTask() {
             
             // 4. 保存到数据库
             saveToDatabase(uid, statusText); 
+            memset(uartdata, 0, sizeof(uartdata)); 
             ::write(fd_nfc, getUID_cmd, sizeof(getUID_cmd));
         }
     }
