@@ -35,14 +35,14 @@
        <item>
         <widget class="QLabel" name="lbl_Member1">
          <property name="text">
-          <string>组员1: 许知涵 2023212000</string>
+          <string>组员1:</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="lbl_Member2">
          <property name="text">
-          <string>组员2: 魏景轩 2023211998</string>
+          <string>组员2:</string>
          </property>
         </widget>
        </item>
