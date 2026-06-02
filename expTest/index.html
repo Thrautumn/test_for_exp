@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>NFC考勤管理系统</title>
+
+<style>
+
+body{
+    margin:0;
+    padding:0;
+    background:#f0f2f5;
+    font-family:"Microsoft YaHei";
+}
+
+.container{
+    width:1000px;
+    margin:30px auto;
+    background:white;
+    border-radius:10px;
+    box-shadow:0px 0px 10px #ccc;
+    padding:30px;
+}
+
+h1{
+    text-align:center;
+    color:#333;
+}
+
+.panel{
+    margin-top:20px;
+    padding:20px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    background:#fafafa;
+}
+
+input[type=text]{
+    width:250px;
+    height:35px;
+    padding-left:10px;
+    border:1px solid #ccc;
+    border-radius:5px;
+    font-size:16px;
+}
+
+button{
+    height:38px;
+    padding:0 20px;
+    border:none;
+    border-radius:5px;
+    background:#1890ff;
+    color:white;
+    font-size:15px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#40a9ff;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+}
+
+table th{
+    background:#1890ff;
+    color:white;
+    height:40px;
+}
+
+table td{
+    text-align:center;
+    height:35px;
+    border-bottom:1px solid #ddd;
+}
+
+.footer{
+    margin-top:20px;
+    text-align:center;
+}
+
+.danger{
+    background:#ff4d4f;
+}
+
+.danger:hover{
+    background:#ff7875;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>NFC嵌入式考勤管理系统</h1>
+
+<!-- 手动打卡 -->
+<div class="panel">
+<h3>手动打卡</h3>
+
+<form action="/cgi-bin/pass.cgi" method="POST">
+
+<input type="hidden" name="action" value="add">
+
+UID：
+<input type="text" name="uid" placeholder="请输入UID">
+
+<button type="submit">提交打卡</button>
+
+</form>
+</div>
+
+<!-- 查询 -->
+<div class="panel">
+
+<h3>查询用户记录</h3>
+
+<form action="/cgi-bin/pass.cgi" method="GET">
+
+<input type="hidden" name="action" value="search">
+
+UID：
+<input type="text" name="uid" placeholder="请输入UID">
+
+<button type="submit">查询</button>
+
+</form>
+
+</div>
+
+<!-- 查看全部 -->
+<div class="panel">
+
+<h3>查看全部记录</h3>
+
+<form action="/cgi-bin/pass.cgi" method="GET">
+
+<input type="hidden" name="action" value="list">
+
+<button type="submit">查看记录</button>
+
+</form>
+
+</div>
+
+<!-- 清空数据库 -->
+<div class="panel">
+
+<h3>危险操作</h3>
+
+<form action="/cgi-bin/pass.cgi" method="POST"
+onsubmit="return confirm('确定清空数据库吗？');">
+
+<input type="hidden" name="action" value="clear">
+
+<button class="danger" type="submit">
+清空数据库
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+</body>
+</html>
